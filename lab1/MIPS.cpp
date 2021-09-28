@@ -196,7 +196,7 @@ int main() {
         bool isRtype = opcode == bitset<6> (string("000000"));
         bool isJtype = opcode == bitset<6> (string("000010")) or opcode == bitset<6> (string("000011")); // j && jal
         bool isItype = !isRtype && !isJtype;
-        bool isBranch = opcode == bitset<6> ("000100"); // beq
+        bool isBranch = opcode == bitset<6> (string("000100")); // beq
 
         bitset<3> op;
         if (isLoad or isStore) {
@@ -224,29 +224,29 @@ int main() {
         } else {
             bitset<5> rs = bitset<5> (ins.to_string().substr(6, 5));
             bitset<5> rt = bitset<5> (ins.to_string().substr(11, 5));
-            myRF.ReadWrite(rs, rt, NULL, NULL, NULL);
+            myRF.ReadWrite(rs, rt, 0, 0, 0);
             bitset<32> result;
             if (isItype) {
                 bitset<16> imm = bitset<16> (ins.to_string().substr(16, 16));
                 bitset<32> extimm = bitset<32> (string(16, imm.to_string()[0]) + imm.to_string());
                 bitset<32> result = myALU.ALUOperation(op, myRF.ReadData1, extimm);
                 if (isLoad) {
-                    bitset<32> data = myDataMem.MemoryAccess(result, NULL, isLoad, NULL);
-                    myRF.ReadWrite(NULL, NULL, rt, data, WrtEnable);
+                    bitset<32> data = myDataMem.MemoryAccess(result, 0, isLoad, 0);
+                    myRF.ReadWrite(0, 0, rt, data, WrtEnable);
                 } else if (isStore) {
-                    myDataMem.MemoryAccess(result, myRF.ReadData2, NULL, isStore);
+                    myDataMem.MemoryAccess(result, myRF.ReadData2, 0, isStore);
                 } else if (isBranch) {
                     string baddr = string(14, imm.to_string()[0]) + imm.to_string() + "00";
                     if (myRF.ReadData1 == myRF.ReadData2) {
                         PC = PC + (bitset<32> (baddr)).to_ulong();
                     }
                 } else {
-                    myRF.ReadWrite(NULL, NULL, rt, result, WrtEnable);
+                    myRF.ReadWrite(0, 0, rt, result, WrtEnable);
                 }
             } else {
                 bitset<5> rd = bitset<5> (ins.to_string().substr(16, 5));
                 result = myALU.ALUOperation(op, myRF.ReadData1, myRF.ReadData2);
-                myRF.ReadWrite(NULL, NULL, rd, result, WrtEnable);
+                myRF.ReadWrite(0, 0, rd, result, WrtEnable);
             }
         }
 
