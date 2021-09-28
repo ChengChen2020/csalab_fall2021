@@ -185,16 +185,16 @@ int main() {
         cout << "Instruction:" << ins << endl;
 
         // If current insturciton is "11111111111111111111111111111111", then break;
-        if (ins == bitset<32> ("11111111111111111111111111111111"))
+        if (ins == bitset<32> (string("11111111111111111111111111111111")))
             break;
 
         // Decode
         bitset<6> opcode = bitset<6> (ins.to_string().substr(0, 6));
 
-        bool isLoad = opcode == bitset<6> ("100011");
-        bool isStore = opcode == bitset<6> ("101011");
-        bool isRtype = opcode == bitset<6> ("000000");
-        bool isJtype = opcode == bitset<6> ("000010") or opcode == bitset<6> ("000011"); // j && jal
+        bool isLoad  = opcode == bitset<6> (string("100011"));
+        bool isStore = opcode == bitset<6> (string("101011"));
+        bool isRtype = opcode == bitset<6> (string("000000"));
+        bool isJtype = opcode == bitset<6> (string("000010")) or opcode == bitset<6> (string("000011")); // j && jal
         bool isItype = !isRtype && !isJtype;
         bool isBranch = opcode == bitset<6> ("000100"); // beq
 
