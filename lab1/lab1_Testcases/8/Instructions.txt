@@ -1,0 +1,10 @@
+addiu r1 r1 1
+addiu r2 r2 1
+beq r1 r2 2
+addiu r0 r0 1
+halt
+addiu r3 r3 2
+addiu r4 r4 2
+beq r3 r4 1
+addiu r0 r0 1
+halt

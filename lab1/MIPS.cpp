@@ -25,6 +25,9 @@ private:
 public:
     bitset<32> ReadData1, ReadData2;
     RF() {
+        ofstream rfout;
+        rfout.open("RFresult.txt");
+        rfout.close();
         Registers.resize(32);
         Registers[0] = bitset<32> (0);
     }
@@ -40,8 +43,7 @@ public:
 
     void OutputRF() {
         ofstream rfout;
-        // rfout.open("RFresult.txt", std::ios_base::app);
-        rfout.open("RFresult.txt");
+        rfout.open("RFresult.txt", std::ios_base::app);
         if (rfout.is_open()) {
             rfout << "A state of RF:" << endl;
             for (int j = 0; j < 32; j ++) {
@@ -172,6 +174,7 @@ public:
 
 
 int main() {
+
     RF myRF;
     ALU myALU;
     INSMem myInsMem;
@@ -218,10 +221,10 @@ int main() {
         // Execute
         PC = PC + 4;
 
-        if (isJtype) {
+        if (isJtype) { //J-type
             string jaddr = (bitset<32> (PC)).to_string().substr(0, 4) + ins.to_string().substr(6, 26) + "00";
             PC = (bitset<32> (jaddr)).to_ulong();
-        } else {
+        } else { // I-type
             bitset<5> rs = bitset<5> (ins.to_string().substr(6, 5));
             bitset<5> rt = bitset<5> (ins.to_string().substr(11, 5));
             myRF.ReadWrite(rs, rt, 0, 0, 0);
@@ -243,7 +246,7 @@ int main() {
                 } else {
                     myRF.ReadWrite(0, 0, rt, result, WrtEnable);
                 }
-            } else {
+            } else { // R-type
                 bitset<5> rd = bitset<5> (ins.to_string().substr(16, 5));
                 result = myALU.ALUOperation(op, myRF.ReadData1, myRF.ReadData2);
                 myRF.ReadWrite(0, 0, rd, result, WrtEnable);

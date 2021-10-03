@@ -1,0 +1,4 @@
+addiu r1 r1 2730
+addiu r2 r2 1365
+or r3 r1 r2
+halt

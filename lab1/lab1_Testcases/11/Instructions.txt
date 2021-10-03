@@ -1,0 +1,4 @@
+lw r1 r0 4
+addiu r0 r0 4
+sw r1 r0 8
+halt

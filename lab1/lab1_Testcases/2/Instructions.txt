@@ -1,0 +1,8 @@
+addiu r1 r1 1
+addiu r2 r2 2
+addiu r3 r3 3
+addiu r4 r4 4
+addu r5 r1 r2
+addu r5 r3 r5
+addu r5 r4 r5
+halt

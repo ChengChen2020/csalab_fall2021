@@ -1,0 +1,13 @@
+addiu r1 r1 1
+addiu r1 r1 2
+j 5
+addiu r1 r1 1
+halt
+addiu r1 r1 4
+addiu r1 r1 8
+j 10
+addiu r1 r1 1
+halt
+addiu r1 r1 16
+addiu r1 r1 32
+halt

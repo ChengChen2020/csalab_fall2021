@@ -1,0 +1,10 @@
+addiu r1 r2 1
+addiu r3 r4 2
+addiu r5 r6 4
+addiu r7 r8 8
+addiu r8 r9 16
+addiu r9 r10 32
+addiu r11 r11 64
+addiu r12 r12 128
+addiu r13 r13 256
+halt
