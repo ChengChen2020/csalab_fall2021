@@ -1,13 +1,12 @@
 #include<iostream>
+#include<fstream>
 #include<string>
 #include<vector>
 #include<bitset>
-#include<fstream>
-using namespace std;
-#define MemSize 1000 // memory size, in reality, the memory size should be 2^32, but for this lab, for the space resaon, we keep it as this large number, but the memory is still 32-bit addressable.
 
-#define ADDU 1
-#define SUBU 3
+using namespace std;
+
+#define MemSize 1000 // memory size, in reality, the memory size should be 2^32, but for this lab, for the space resaon, we keep it as this large number, but the memory is still 32-bit addressable.
 
 struct IFStruct {
     bitset<32>  PC;
@@ -109,7 +108,7 @@ public:
         imem.open("imem.txt");
         if (imem.is_open()) {
             while (getline(imem, line)) {
-                IMem[i] = bitset<8> (line);
+                IMem[i] = bitset<8> (line.substr(0, 8));
                 i ++;
             }
         }
@@ -142,7 +141,7 @@ public:
         dmem.open("dmem.txt");
         if (dmem.is_open()) {
             while (getline(dmem, line)) {
-                DMem[i] = bitset<8> (line);
+                DMem[i] = bitset<8> (line.substr(0, 8));
                 i++;
             }
         }
@@ -183,17 +182,11 @@ public:
 class ALU {
 public:
     bitset<32> ALUresult;
-    bitset<32> ALUOperation(bitset<3> ALUOP, bitset<32> oprand1, bitset<32> oprand2) {
-        switch(ALUOP.to_ulong()) {
-            case ADDU:
-                ALUresult = bitset<32> (oprand1.to_ulong() + oprand2.to_ulong());
-                break;
-            case SUBU:
-                ALUresult = bitset<32> (oprand1.to_ulong() - oprand2.to_ulong());
-                break;
-            default:
-                cout << "ERROR" << endl;
-        }
+    bitset<32> ALUOperation(bool ALUOP, bitset<32> oprand1, bitset<32> oprand2) {
+        if (ALUOP == true)
+            ALUresult = bitset<32> (oprand1.to_ulong() + oprand2.to_ulong());
+        else
+            ALUresult = bitset<32> (oprand1.to_ulong() - oprand2.to_ulong());
         return ALUresult;
     }
 };
@@ -252,41 +245,136 @@ int main() {
     RF myRF;
     INSMem myInsMem;
     DataMem myDataMem;
+    ALU myALU;
 
     int cycle = 0;
     stateStruct state;
-    stateStruct newState;
+
+    state.WB.nop  = true;
+    state.MEM.nop = true;
+    state.EX.nop  = true;
+    state.ID.nop  = true;
+    state.IF.nop  = false;
 
     while (1) {
+        stateStruct newState = state;
+
+        newState.WB.nop  = state.MEM.nop;
+        newState.MEM.nop = state.EX.nop;
+        newState.EX.nop  = state.ID.nop;
+        newState.ID.nop  = state.IF.nop;
 
         /* --------------------- WB stage --------------------- */
         if (!state.WB.nop && state.WB.wrt_enable) {
             myRF.writeRF(state.WB.Wrt_reg_addr, state.WB.Wrt_data);
         }
 
-
         /* --------------------- MEM stage --------------------- */
+        if (!state.MEM.nop) {
 
+            newState.WB.Wrt_data     = state.MEM.ALUresult;
+            newState.WB.Rs           = state.MEM.Rs;
+            newState.WB.Rt           = state.MEM.Rt;
+            newState.WB.wrt_enable   = state.MEM.wrt_enable;
+            newState.WB.Wrt_reg_addr = state.MEM.Wrt_reg_addr;
 
+            if (state.MEM.rd_mem) {
+                newState.WB.Wrt_data = myDataMem.readDataMem(state.MEM.ALUresult);
+            }
+            else if (state.MEM.wrt_mem) {
+                myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
+            }
+        
+        }
 
         /* --------------------- EX stage --------------------- */
+        if (!state.EX.nop) {
+            
+            string imm = state.EX.Imm.to_string();
+            bitset<32> extimm(string(16, imm[0]) + imm);
+
+            myALU.ALUOperation(state.EX.alu_op, state.EX.Read_data1, state.EX.is_I_type ? extimm : state.EX.Read_data2);            
+            
+            newState.MEM.ALUresult    = myALU.ALUresult;
+            newState.MEM.rd_mem       = state.EX.rd_mem;
+            newState.MEM.Rs           = state.EX.Rs;
+            newState.MEM.Rt           = state.EX.Rt;
+            newState.MEM.Store_data   = state.EX.Read_data2;
+            newState.MEM.wrt_enable   = state.EX.wrt_enable;
+            newState.MEM.wrt_mem      = state.EX.wrt_mem;
+            newState.MEM.Wrt_reg_addr = state.EX.Wrt_reg_addr;
+        
+        }
 
 
         /* --------------------- ID stage --------------------- */
+        bool isTaken = false;
 
+        if (!state.ID.nop) {
+
+            string ins = state.ID.Instr.to_string();
+
+            bool isBranch           = ins.substr(0, 6) == string("000100");
+
+            newState.EX.is_I_type   = ins.substr(0, 6) != string("000000");
+
+            newState.EX.rd_mem      = ins.substr(0, 6) == string("100011"); // lw
+            newState.EX.wrt_mem     = ins.substr(0, 6) == string("101011"); // sw
+
+            newState.EX.Rs          = bitset<5> (ins.substr(6, 5));
+            newState.EX.Rt          = bitset<5> (ins.substr(11, 5));
+            newState.EX.Imm         = bitset<16>(ins.substr(16, 16));
+
+            newState.EX.Read_data1  = myRF.readRF(newState.EX.Rs);
+            newState.EX.Read_data2  = myRF.readRF(newState.EX.Rt);
+
+            newState.EX.Wrt_reg_addr= newState.EX.is_I_type ? newState.EX.Rt : bitset<5> (ins.substr(16, 5));
+
+            newState.EX.alu_op      = (ins.substr(0, 2) == string("10")) || 
+                                      (!newState.EX.is_I_type && (ins.substr(26, 6) == string("100001")));
+
+            newState.EX.wrt_enable  = !newState.EX.wrt_mem && !isBranch;
+
+            if (isBranch) {
+                /** 
+                 * we will assume that the beq (branch-if-qual) instruction
+                 * operates like a bne (branch-if-not-equal) instruction
+                 **/
+                if (myRF.readRF(newState.EX.Rs) != myRF.readRF(newState.EX.Rt)) {
+                    bitset<32> branchAddr(string(14, newState.EX.Imm[0]) + newState.EX.Imm.to_string() + "00");
+                    newState.IF.PC = bitset<32> (branchAddr.to_ulong() + state.IF.PC.to_ulong() + 4);
+                    newState.ID.nop = true;
+                    isTaken = true;
+                }
+            }
+        
+        }
 
 
         /* --------------------- IF stage --------------------- */
+        if (!state.IF.nop) {
+            
+            newState.ID.Instr = myInsMem.readInstr(state.IF.PC);
+            cout << newState.ID.Instr << endl;
+            if (newState.ID.Instr.to_ulong() == 0xffffffff) {
+                newState.ID.nop = true;
+                newState.IF.nop = true;
+            }
+            else if (!isTaken)
+                newState.IF.PC = bitset<32> (state.IF.PC.to_ulong() + 4);
+        
+        }
 
 
 
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop)
             break;
 
-        printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ...
+        // printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ...
 
         cycle += 1;
-        state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */
+        state = newState; /* The end of the cycle and updates the current state with the values calculated in this cycle */
+
     }
     
     myRF.outputRF(); // dump RF;
