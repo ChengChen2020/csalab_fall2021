@@ -68,6 +68,8 @@ private:
 public: 
     bitset<32> Reg_data;
     RF() {
+        ofstream rfout("RFresult.txt");
+        rfout.close();
         Registers.resize(32);
         Registers[0] = bitset<32> (0);
     }
@@ -241,6 +243,9 @@ void printState(stateStruct state, int cycle) {
  
 
 int main() {
+
+    ofstream printstate("stateresult.txt");
+    printstate.close();
     
     RF myRF;
     INSMem myInsMem;
@@ -289,6 +294,23 @@ int main() {
 
         /* --------------------- EX stage --------------------- */
         if (!state.EX.nop) {
+
+            /* Solve register RAW hazards with forwarding */
+
+            // Ex-Ex, deal with lw-use hazard with stall seperately
+            if (state.MEM.wrt_enable && !state.MEM.rd_mem) {
+                if (state.MEM.Wrt_reg_addr == state.EX.Rs)
+                    state.EX.Read_data1 = state.MEM.ALUresult;
+                if (state.MEM.Wrt_reg_addr == state.EX.Rt)
+                    state.EX.Read_data2 = state.MEM.ALUresult;
+            }
+            // Mem-Ex
+            if (state.WB.wrt_enable) {
+                if (state.WB.Wrt_reg_addr == state.EX.Rs)
+                    state.EX.Read_data1 = state.WB.Wrt_data;
+                if (state.WB.Wrt_reg_addr == state.EX.Rt)
+                    state.EX.Read_data2 = state.WB.Wrt_data;
+            }
             
             string imm = state.EX.Imm.to_string();
             bitset<32> extimm(string(16, imm[0]) + imm);
@@ -337,7 +359,7 @@ int main() {
 
             if (isBranch) {
                 /** 
-                 * we will assume that the beq (branch-if-qual) instruction
+                 * We will assume that the beq (branch-if-qual) instruction
                  * operates like a bne (branch-if-not-equal) instruction
                  **/
                 if (myRF.readRF(newState.EX.Rs) != myRF.readRF(newState.EX.Rt)) {
@@ -366,11 +388,21 @@ int main() {
         }
 
 
+        /* Stall, lw-use hazard */
+        /* With a lw instruction, we don’t have the value until end of MEM stage. */
+        if (!state.MEM.nop) {
+            if (state.MEM.rd_mem && (state.MEM.Wrt_reg_addr == newState.EX.Rs || state.MEM.Wrt_reg_addr == newState.EX.Rt)) {
+                newState.EX.nop = true;
+                newState.ID     = state.ID;
+                newState.IF     = state.IF;
+            }
+        }
+
 
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop)
             break;
 
-        // printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ...
+        printState(newState, cycle); /* print states after executing cycle 0, cycle 1, cycle 2 ... */
 
         cycle += 1;
         state = newState; /* The end of the cycle and updates the current state with the values calculated in this cycle */
