@@ -144,7 +144,7 @@ public:
         if (dmem.is_open()) {
             while (getline(dmem, line)) {
                 DMem[i] = bitset<8> (line.substr(0, 8));
-                i++;
+                i ++;
             }
         }
         else cout << "Unable to open file";
@@ -157,12 +157,12 @@ public:
         datamem.append(DMem[Address.to_ulong()+1].to_string());
         datamem.append(DMem[Address.to_ulong()+2].to_string());
         datamem.append(DMem[Address.to_ulong()+3].to_string());
-        ReadData = bitset<32>(datamem); //read data memory
+        ReadData = bitset<32> (datamem); //read data memory
         return ReadData;
     }
 
     void writeDataMem(bitset<32> Address, bitset<32> WriteData) {
-        DMem[Address.to_ulong()] = bitset<8>(WriteData.to_string().substr(0,8));
+        DMem[Address.to_ulong()]   = bitset<8>(WriteData.to_string().substr(0,8));
         DMem[Address.to_ulong()+1] = bitset<8>(WriteData.to_string().substr(8,8));
         DMem[Address.to_ulong()+2] = bitset<8>(WriteData.to_string().substr(16,8));
         DMem[Address.to_ulong()+3] = bitset<8>(WriteData.to_string().substr(24,8));
@@ -363,8 +363,8 @@ int main() {
                  * operates like a bne (branch-if-not-equal) instruction
                  **/
                 if (myRF.readRF(newState.EX.Rs) != myRF.readRF(newState.EX.Rt)) {
-                    bitset<32> branchAddr(string(14, newState.EX.Imm[0]) + newState.EX.Imm.to_string() + "00");
-                    newState.IF.PC = bitset<32> (branchAddr.to_ulong() + state.IF.PC.to_ulong() + 4);
+                    bitset<32> branchAddr(string(14, newState.EX.Imm.to_string()[0]) + newState.EX.Imm.to_string().substr(0, 16) + string(2, '0'));
+                    newState.IF.PC = bitset<32> (branchAddr.to_ulong() + state.IF.PC.to_ulong());
                     newState.ID.nop = true;
                     isTaken = true;
                 }
@@ -378,7 +378,7 @@ int main() {
             
             newState.ID.Instr = myInsMem.readInstr(state.IF.PC);
             cout << newState.ID.Instr << endl;
-            if (newState.ID.Instr.to_ulong() == 0xffffffff) {
+            if (newState.ID.Instr.to_ulong() == 0xffffffff && !isTaken) {
                 newState.ID.nop = true;
                 newState.IF.nop = true;
             }
@@ -406,11 +406,12 @@ int main() {
 
         cycle += 1;
         state = newState; /* The end of the cycle and updates the current state with the values calculated in this cycle */
-
     }
-    
+
     myRF.outputRF(); // dump RF;
     myDataMem.outputDataMem(); // dump data mem
 
     return 0;
 }
+
+
