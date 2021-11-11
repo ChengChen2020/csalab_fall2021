@@ -253,7 +253,7 @@ int main() {
     ALU myALU;
 
     int cycle = 0;
-    stateStruct state;
+    stateStruct state = {0};
 
     state.WB.nop  = true;
     state.MEM.nop = true;
