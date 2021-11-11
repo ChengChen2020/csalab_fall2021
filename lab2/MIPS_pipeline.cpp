@@ -287,7 +287,10 @@ int main() {
                 newState.WB.Wrt_data = myDataMem.readDataMem(state.MEM.ALUresult);
             }
             else if (state.MEM.wrt_mem) {
-                myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
+                if (state.WB.Wrt_reg_addr == state.MEM.Rt)
+                    myDataMem.writeDataMem(state.MEM.ALUresult, state.WB.Wrt_data);
+                else
+                    myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
             }
         
         }
@@ -301,7 +304,7 @@ int main() {
             if (state.MEM.wrt_enable && !state.MEM.rd_mem) {
                 if (state.MEM.Wrt_reg_addr == state.EX.Rs)
                     state.EX.Read_data1 = state.MEM.ALUresult;
-                if (state.MEM.Wrt_reg_addr == state.EX.Rt)
+                if (state.MEM.Wrt_reg_addr == state.EX.Rt && !state.EX.wrt_mem)
                     state.EX.Read_data2 = state.MEM.ALUresult;
             }
             // Mem-Ex
@@ -377,7 +380,7 @@ int main() {
         if (!state.IF.nop) {
             
             newState.ID.Instr = myInsMem.readInstr(state.IF.PC);
-            cout << newState.ID.Instr << endl;
+            // cout << newState.ID.Instr << endl;
             if (newState.ID.Instr.to_ulong() == 0xffffffff && !isTaken) {
                 newState.ID.nop = true;
                 newState.IF.nop = true;
@@ -390,8 +393,10 @@ int main() {
 
         /* Stall, lw-use hazard */
         /* With a lw instruction, we don’t have the value until end of MEM stage. */
-        if (!state.MEM.nop) {
-            if (state.MEM.rd_mem && (state.MEM.Wrt_reg_addr == newState.EX.Rs || state.MEM.Wrt_reg_addr == newState.EX.Rt)) {
+        if (!state.EX.nop) {
+            if (state.EX.rd_mem &&
+                (state.EX.Wrt_reg_addr == newState.EX.Rs ||
+                 state.EX.Wrt_reg_addr == newState.EX.Rt)) {
                 newState.EX.nop = true;
                 newState.ID     = state.ID;
                 newState.IF     = state.IF;
