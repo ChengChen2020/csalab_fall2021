@@ -125,8 +125,6 @@ int main(int argc, char* argv[]){
     unsigned int addr;  // the address from the memory trace store in unsigned int;        
     bitset<32> accessaddr; // the address from the memory trace store in the bitset;
 
-    int cnt = 0;
-
     if (traces.is_open() && tracesout.is_open()) {    
         while (getline (traces,line)) {   // read mem access file and access Cache
 
