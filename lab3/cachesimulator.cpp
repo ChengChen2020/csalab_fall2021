@@ -218,9 +218,7 @@ int main(int argc, char* argv[]){
                 // update the L1 and L2 access state variable;
 
                 // Write L1 hit
-                int i;
-                for (i = 0; i < L1.setsize; i ++) {
-                    string tag = L1.tag_array[index_1][i];
+                for (string tag : L1.tag_array[index_1]) {
                     if (tag.compare(tag_1) == 0) {
                         L1AcceState = WH;
                         break;
