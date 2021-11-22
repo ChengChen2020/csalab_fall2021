@@ -169,7 +169,7 @@ int main(int argc, char* argv[]){
                 }
                 // Read L1 miss
                 if (L1AcceState != RH) {
-                    L1AcceState = RM;
+                    L1AcceState  = RM;
                     // Read L2 hit
                     for (string tag : L2.tag_array[index_2]) {
                         if (tag.compare(tag_2) == 0) {
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]){
                     }
                     // Read L2 miss
                     if (L2AcceState != RH) {
-                        L2AcceState = RM;
+                        L2AcceState  = RM;
                         // Empty way exists
                         int i;
                         for (i = 0; i < L2.setsize; i ++) {
@@ -228,7 +228,7 @@ int main(int argc, char* argv[]){
                 }
                 // Write L1 miss
                 if (L1AcceState != WH) {
-                    L1AcceState = WM;
+                    L1AcceState  = WM;
                     // Write L2 hit
                     int i;
                     for (i = 0; i < L2.setsize; i ++) {
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]){
                     }
                     // Write L2 miss
                     if (L2AcceState != WH) {
-                        L2AcceState = WM;
+                        L2AcceState  = WM;
                     }
                 }
             }
