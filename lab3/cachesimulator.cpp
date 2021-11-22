@@ -228,9 +228,7 @@ int main(int argc, char* argv[]){
                 if (L1AcceState != WH) {
                     L1AcceState  = WM;
                     // Write L2 hit
-                    int i;
-                    for (i = 0; i < L2.setsize; i ++) {
-                        string tag = L2.tag_array[index_2][i];
+                    for (string tag : L2.tag_array[index_2]) {
                         if (tag.compare(tag_2) == 0) {
                             L2AcceState = WH;
                             break;
