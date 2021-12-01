@@ -10,15 +10,15 @@
     o = log2(block size); i = log2(#sets) t = 32 - s - b
 */
 
-#include <iostream>
-#include <fstream>
+#include <cmath>
 #include <string>
-#include <sstream>
 #include <vector>
+#include <bitset>
+#include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <stdlib.h>
-#include <cmath>
-#include <bitset>
+#include <iostream>
 
 using namespace std;
 //access state
@@ -50,11 +50,11 @@ public:
     int setsize;
     int blocksize;
 
-    int set_nu;
+    int set_nu; // number of sets
 
-    int off_sz;
-    int ind_sz;
-    int tag_sz;
+    int off_sz; // offset bits
+    int ind_sz; // index bits
+    int tag_sz; // tag bits
 
     int evc_id = 0;
 
@@ -70,6 +70,69 @@ public:
         tag_sz = 32 - ind_sz - off_sz;
 
         tag_array.assign(set_nu, vector<string> (setsize, ""));
+    }
+
+    bool Read(bitset<32> address) {
+        string sa = address.to_string();
+        string tag = sa.substr(0, tag_sz);
+        string ind = sa.substr(tag_sz, ind_sz);
+
+        int index = stoi(ind, nullptr, 2);
+
+        int i;
+        for (i = 0; i < setsize; i ++) {
+            if (tag_array[index][i] == tag) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool Write(bitset<32> address) {
+        string sa = address.to_string();
+        string tag = sa.substr(0, tag_sz);
+        string ind = sa.substr(tag_sz, ind_sz);
+
+        int index = stoi(ind, nullptr, 2);
+
+        int i;
+        for (i = 0; i < setsize; i ++) {
+            if (tag_array[index][i] == tag) {
+                return false;
+            }
+        }
+        for (i = 0; i < setsize; i ++) {
+            if (tag_array[index][i].empty()) {
+                tag_array[index][i] = tag;
+                return false;
+            }
+        }
+        tag_array[index][evc_id] = tag;
+        evc_id += 1;
+        evc_id %= setsize;
+        return true;
+    }
+
+    bool Eviction(bitset<32> address) {
+        string sa = address.to_string();
+        string tag = sa.substr(0, tag_sz);
+        string ind = sa.substr(tag_sz, ind_sz);
+
+        int index = stoi(ind, nullptr, 2);
+
+        int i;
+        for (i = 0; i < setsize; i ++) {
+            if (tag_array[index][i] == tag) {
+                return false;
+            }
+        }
+        for (i = 0; i < setsize; i ++) {
+            if (tag_array[index][i].empty()) {
+                tag_array[index][i] = tag;
+                return false;
+            }
+        }
+        return true;
     }
 
     friend ostream& operator<<(ostream& os, const cache& ca) {
@@ -137,22 +200,6 @@ int main(int argc, char* argv[]){
             saddr >> std::hex >> addr;
             accessaddr = bitset<32> (addr);
 
-            string sa = accessaddr.to_string();
-            string tag_1 = sa.substr(0, L1.tag_sz);
-            string ind_1 = sa.substr(L1.tag_sz, L1.ind_sz);
-            string off_1 = sa.substr(L1.tag_sz + L1.ind_sz, L1.off_sz);
-            string tag_2 = sa.substr(0, L2.tag_sz);
-            string ind_2 = sa.substr(L2.tag_sz, L2.ind_sz);
-            string off_2 = sa.substr(L2.tag_sz + L2.ind_sz, L2.off_sz);
-            
-            // cout << sa << endl;
-            // cout << tag_1 << ' ' << ind_1 << ' ' << off_1 << endl;
-            // cout << tag_2 << ' ' << ind_2 << ' ' << off_2 << endl;
-
-            int index_1 = stoi(ind_1, nullptr, 2);
-            int index_2 = stoi(ind_2, nullptr, 2);
-
-            // cout << accesstype << endl;
             // access the L1 and L2 Cache according to the trace;
             if (accesstype.compare("R") == 0) {
                 //Implement by you:
@@ -161,54 +208,56 @@ int main(int argc, char* argv[]){
                 //  update the L1 and L2 access state variable;
 
                 // Read L1 hit
-                for (string tag : L1.tag_array[index_1]) {
-                    if (tag.compare(tag_1) == 0) {
-                        L1AcceState = RH;
-                        break;
-                    }
+                if (L1.Read(accessaddr)) {
+                    L1AcceState = RH;
+                    L2AcceState = NA;
+                } 
+                // Read L2 hit
+                else if (L2.Read(accessaddr)) {
+                    L1AcceState = RM;
+                    L2AcceState = RH;
+                    // Load to L1
+                    L1.Write(accessaddr);
                 }
-                // Read L1 miss
-                if (L1AcceState != RH) {
-                    L1AcceState  = RM;
-                    // Read L2 hit
-                    for (string tag : L2.tag_array[index_2]) {
-                        if (tag.compare(tag_2) == 0) {
-                            L2AcceState = RH;
-                            // Empty way exists
+                // Both miss
+                else {
+                    L1AcceState = RM;
+                    L2AcceState = RM;
+
+                    if (L2.Eviction(accessaddr)) { // Eviction
+                        string sa = accessaddr.to_string();
+                        string tag_2 = sa.substr(0, L2.tag_sz);
+                        string ind_2 = sa.substr(L2.tag_sz, L2.ind_sz);
+
+                        int index_2 = stoi(ind_2, nullptr, 2);
+
+                        // Inclusive
+                        string evc_tag_2 = L2.tag_array[index_2][L2.evc_id];
+                        string tmp = evc_tag_2 + ind_2;
+                        /**
+                         *  L2 block is larger than L1 block
+                         *  Invalidate all L1 blocks
+                         **/
+                        int num = L1.tag_sz + L1.ind_sz - tmp.size();
+                        for (int k = 0; k < pow(2, num); k ++) {
+                            tmp += string(num - to_string(k).size(), '0') + to_string(k);                            
+                            string evc_tag_1 = tmp.substr(0, L1.tag_sz);
+                            string evc_ind_1 = tmp.substr(L1.tag_sz, L1.ind_sz);
+                            int evc_index_1 = stoi(evc_ind_1, nullptr, 2);
                             int i;
                             for (i = 0; i < L1.setsize; i ++) {
-                                if (L1.tag_array[index_1][i].empty()) {
-                                    L1.tag_array[index_1][i] = tag_1;
+                                if (L1.tag_array[evc_index_1][i] == evc_tag_1) {
+                                    L1.tag_array[evc_index_1][i]  = "";
                                     break;
                                 }
                             }
-                            // Eviction
-                            if (i == L1.setsize) {
-                                L1.tag_array[index_1][L1.evc_id] = tag_1;
-                                L1.evc_id += 1;
-                                L1.evc_id %= L1.setsize;
-                            }
-                            break;
                         }
+                        L2.tag_array[index_2][L2.evc_id] = tag_2;
+                        L2.evc_id += 1;
+                        L2.evc_id %= L2.setsize;
                     }
-                    // Read L2 miss
-                    if (L2AcceState != RH) {
-                        L2AcceState  = RM;
-                        // Empty way exists
-                        int i;
-                        for (i = 0; i < L2.setsize; i ++) {
-                            if (L2.tag_array[index_2][i].empty()) {
-                                L2.tag_array[index_2][i] = tag_2;
-                                break;
-                            }
-                        }
-                        // Eviction
-                        if (i == L2.setsize) {
-                            L2.tag_array[index_2][L2.evc_id] = tag_2;
-                            L2.evc_id += 1;
-                            L2.evc_id %= L2.setsize;
-                        }
-                    }
+                    
+                    L1.Write(accessaddr);
                 }
 
             } else {
@@ -217,27 +266,15 @@ int main(int argc, char* argv[]){
                 // and then L2 (if required),
                 // update the L1 and L2 access state variable;
 
-                // Write L1 hit
-                for (string tag : L1.tag_array[index_1]) {
-                    if (tag.compare(tag_1) == 0) {
-                        L1AcceState = WH;
-                        break;
-                    }
-                }
-                // Write L1 miss
-                if (L1AcceState != WH) {
-                    L1AcceState  = WM;
-                    // Write L2 hit
-                    for (string tag : L2.tag_array[index_2]) {
-                        if (tag.compare(tag_2) == 0) {
-                            L2AcceState = WH;
-                            break;
-                        }
-                    }
-                    // Write L2 miss
-                    if (L2AcceState != WH) {
-                        L2AcceState  = WM;
-                    }
+                if (L1.Read(accessaddr)) {
+                    L1AcceState = WH;
+                    L2AcceState = NA;
+                } else if (L2.Read(accessaddr)) {
+                    L1AcceState = WM;
+                    L2AcceState = WH;
+                } else {
+                    L1AcceState = WM;
+                    L2AcceState = WM;
                 }
             }
 
