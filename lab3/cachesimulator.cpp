@@ -95,18 +95,14 @@ public:
 
         int index = stoi(ind, nullptr, 2);
 
-        int i;
-        for (i = 0; i < setsize; i ++) {
-            if (tag_array[index][i] == tag) {
-                return false;
-            }
-        }
-        for (i = 0; i < setsize; i ++) {
+        // Empty way exists
+        for (int i = 0; i < setsize; i ++) {
             if (tag_array[index][i].empty()) {
                 tag_array[index][i] = tag;
                 return false;
             }
         }
+        // Eviction
         tag_array[index][evc_id] = tag;
         evc_id += 1;
         evc_id %= setsize;
@@ -120,18 +116,14 @@ public:
 
         int index = stoi(ind, nullptr, 2);
 
-        int i;
-        for (i = 0; i < setsize; i ++) {
-            if (tag_array[index][i] == tag) {
-                return false;
-            }
-        }
-        for (i = 0; i < setsize; i ++) {
+        // Empty way exists
+        for (int i = 0; i < setsize; i ++) {
             if (tag_array[index][i].empty()) {
                 tag_array[index][i] = tag;
                 return false;
             }
         }
+        // Eviction
         return true;
     }
 
