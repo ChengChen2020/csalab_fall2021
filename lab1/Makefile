@@ -1,4 +1,4 @@
 mips: MIPS.cpp
-	g++ MIPS.cpp -o MIPS
+	g++ MIPS.cpp -o MIPS.out
 clean:
-	rm MIPS
+	rm MIPS.out
